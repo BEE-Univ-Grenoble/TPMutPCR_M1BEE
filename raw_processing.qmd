@@ -1,0 +1,217 @@
+---
+title: "Raw data processing"
+author: "Eric Coissac : TP M1 Mod2"
+format: html
+editor: visual
+---
+
+## Analyse des données brutes de séquençages
+
+-   Alignement des lectures *forward* et *reverse*.
+
+```{bash}
+#| eval: false
+
+obipairing -F RawSeq/170421_SND393_B_L003_GWM-1107_R1.fastq.gz \
+           -R RawSeq/170421_SND393_B_L003_GWM-1107_R2.fastq.gz \
+           > RawSeq/GWM-1107.paired.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/170421_SND393_B_L003_GWM-1107_R1.fastq.gz file 
+INFO[0000] Appending RawSeq/170421_SND393_B_L003_GWM-1107_R2.fastq.gz file 
+INFO[0000] Start of the sequence Pairing using 19 workers 
+INFO[0000] On output use JSON headers                   
+INFO[0000] Initializing the DNA Scoring matrix          
+- [Sequence Processing] (16680000/-, 112690 it/s) 
+INFO[0104] End of the sequence Pairing                  
+```
+
+```{bash}
+#| eval: false
+
+obicount RawSeq/GWM-1107.paired.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.paired.fastq file  
+ 16703847 16703847 3138376732
+```
+
+-   Sélection des sequences alignées
+
+```{bash}
+#| eval: false
+obigrep -a mode=alignment \
+        RawSeq/GWM-1107.paired.fastq \
+        > RawSeq/GWM-1107.aligned.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.paired.fastq file  
+INFO[0000] mode alignment                               
+INFO[0000] On output use JSON headers                   
+| [Sequence Processing] (15795000/-, 247360 it/s) 
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.aligned.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.aligned.fastq file  
+ 15809347 15809347 2905806732
+```
+
+-   Sélection des séquence contenant seulement des ACGT
+
+```{bash}
+#| eval: false
+obigrep -s '^[acgt]+$' \
+        RawSeq/GWM-1107.aligned.fastq \
+        > RawSeq/GWM-1107.acgt.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.aligned.fastq file 
+INFO[0000] On output use JSON headers                   
+| [Sequence Processing] (15120000/-, 213546 it/s) 
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.acgt.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.acgt.fastq file  
+ 15131170 15131170 2780584396
+```
+
+-   Selection des séquences de longueur correcte (entre 100 et 300 paires de bases)
+
+```{bash}
+#| eval: false
+obigrep -l 100 -L 300 \
+        RawSeq/GWM-1107.acgt.fastq \
+        > RawSeq/GWM-1107.good_length.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.acgt.fastq file    
+INFO[0000] On output use JSON headers                   
+- [Sequence Processing] (15115000/-, 260513 it/s) 
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.good_length.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.good_length.fastq file 
+ 15131170 15131170 2780584396
+```
+
+-   Démultiplexage des séquence et identification des échantillons
+
+```{bash}
+#| eval: false
+obimultiplex -t RawSeq/GWM-1107.ngsfilter \
+             -u RawSeq/GWM-1107.no-sample.fastq \
+             RawSeq/GWM-1107.good_length.fastq \
+             > RawSeq/GWM-1107.sample.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.good_length.fastq file 
+INFO[0000] Start of the batch slice workers on 4 workers (buffer : 1) 
+INFO[0000] Unassigned sequences saved in file: RawSeq/GWM-1107.no-sample.fastq 
+INFO[0000] Sequence demultiplexing using 19 workers     
+INFO[0000] On output use JSON headers                   
+INFO[0000] On output use JSON headers                   
+\ [Sequence Processing] (12990000/-, 154248 it/s) 
+INFO[0076] End of the batch slice workers
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.no-sample.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.no-sample.fastq file 
+ 2132480 2132480 324779176
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.sample.fastq
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.sample.fastq file  
+ 12998690 12998690 1587714353
+```
+
+-   Déréplication des séquences
+
+```{bash}
+#| eval: false
+obiuniq --on-disk \
+        -m sample \
+        RawSeq/GWM-1107.sample.fastq \
+        > RawSeq/GWM-1107.unique.fasta
+```
+
+``` bash
+INFO[0054] Data splitted over 100 batches               
+INFO[0054] End of the data splitting                    
+INFO[0054] On output use JSON headers                   
+INFO[0054] Start processing of batch 0/100 : 157642 sequences 
+| [Sequence Processing] (1691033/-, 40439 it/s) 
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.unique.fasta
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.unique.fasta file  
+ 1698445 12998690 205234003
+```
+
+-   Identification des erreurs PCR
+
+```{bash}
+#| eval: false
+obiclean --save-graph RawSeq/GWM-1107_Graphs \
+         --save-ratio RawSeq/GWM-1107_ratio.csv \
+         --min-eval-rate 1 \
+         -s sample \
+         RawSeq/GWM-1107.unique.fasta \
+         > RawSeq/GWM-1107.clean.fasta
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.unique.fasta file  
+INFO[0004] Sequence dataset of 1698445 sequeences loaded 
+INFO[0006] Dataset composed of 962 samples              
+[Save CSV stat ratio file] 100% |███████████████| (45 it/s)
+INFO[0058] Start of the batch slice workers on 4 workers (buffer : 0) 
+INFO[0058] On output use JSON headers                   
+- [Sequence Processing] (1683000/-, 150181 it/s) 
+INFO[0072] End of the batch slice workers            
+```
+
+```{bash}
+#| eval: false
+obicount RawSeq/GWM-1107.clean.fasta
+```
+
+``` bash
+INFO[0000] Appending RawSeq/GWM-1107.clean.fasta file   
+ 1698445 12998690 205234003
+```
